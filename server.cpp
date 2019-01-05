@@ -1,17 +1,16 @@
 #include "server.h"
+
 #include <QtWebSockets/qwebsocketserver.h>
 #include <QtWebSockets/qwebsocket.h>
 #include <QtCore/QDebug>
 #include <QNetworkReply>
 
 
-
 static QString getIdentifier(QWebSocket *p)
 {
     return QStringLiteral("%1:%2").arg(p->peerAddress().toString(),
-                                   QString::number(p->peerPort()))  ;
+                                   QString::number(p->peerPort()));
 }
-
 
 
 Server::Server(quint16 port,  QObject *parent ) :
@@ -21,8 +20,8 @@ Server::Server(quint16 port,  QObject *parent ) :
 {
     if(WebSocketServer->listen(QHostAddress::Any,port))
     {
-       QTextStream(stdout) << "Server nasluchuje na porcie: " << port << '\n' ;
-       connect(WebSocketServer,&QWebSocketServer::newConnection,this, &Server::onNewConnection) ;
+       QTextStream(stdout) << "Server nasluchuje na porcie: " << port << '\n';
+       connect(WebSocketServer,&QWebSocketServer::newConnection,this, &Server::onNewConnection);
     }
 }
 
@@ -40,7 +39,7 @@ void Server::onNewConnection()
     connect(socket, &QWebSocket::textMessageReceived,this,&Server::jsonMessageReceived);
     connect(socket, &QWebSocket::textMessageReceived, this, &Server::processTxtMsg);
     connect(socket, &QWebSocket::disconnected, this, &Server::socketDisconnected);
-    clients << socket ;
+    clients << socket;
 
     logs.saveConnectionLog(socket);
 
@@ -48,20 +47,19 @@ void Server::onNewConnection()
 
 void  Server::processTxtMsg(QString msg)
 {
-    QWebSocket *ptr_sender = qobject_cast<QWebSocket * >(sender()) ;
+    QWebSocket *ptr_sender = qobject_cast<QWebSocket * >(sender());
     for(QWebSocket *ptr_client : qAsConst(clients))
     {
         if(ptr_client != ptr_sender)
-            ptr_client->sendTextMessage(msg) ;
+            ptr_client->sendTextMessage(msg);
     }
 }
-
 
 void Server::socketDisconnected()
 {
     QWebSocket *client = qobject_cast<QWebSocket *> (sender());
 
-    QTextStream(stdout) << getIdentifier(client) << "rozlaczony!\n" ;
+    QTextStream(stdout) << getIdentifier(client) << "rozlaczony!\n";
 
     if(client)
     {
@@ -69,18 +67,18 @@ void Server::socketDisconnected()
 
         client->deleteLater();
     }
-    logs.saveDisconnectLog(client) ;
+    logs.saveDisconnectLog(client);
 
 }
 
 void Server::jsonMessageReceived(const QString &message)
 {
-    QJsonParseError err ;
-    QJsonDocument msg = QJsonDocument::fromJson(message.toUtf8(),&err) ;
+    QJsonParseError err;
+    QJsonDocument msg = QJsonDocument::fromJson(message.toUtf8(),&err);
     if(err.error)
     {
         qWarning() << "Failed to parse text message as JSON object: " << message
-                    << "error is: " << err.errorString() ;
+                    << "error is: " << err.errorString();
     }
     else if (!msg.isObject())
     {
@@ -88,7 +86,7 @@ void Server::jsonMessageReceived(const QString &message)
     }
 
 
-    qDebug() << msg  ;
+    qDebug() << msg;
     emit messageReceived(msg.object(),this);
 }
 
