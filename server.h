@@ -1,5 +1,7 @@
 #pragma once
+
 #include "logger.h"
+
 #include <QtCore/QObject>
 #include <QtCore/QList>
 #include <QtCore/QByteArray>
@@ -8,6 +10,7 @@
 
 QT_FORWARD_DECLARE_CLASS(QWebSocketServer)
 QT_FORWARD_DECLARE_CLASS(QWebSocket)
+
 
 class Server : public QObject
 { 
@@ -18,19 +21,22 @@ public:
 
     Q_SIGNALS:
         void closed();
-        void messageReceived(const QJsonObject &message, Server *transport) ;
+        void messageReceived(const QJsonObject &message, Server *transport);
+
 private Q_SLOTS:
         void onNewConnection();
         void processTxtMsg(QString msg);
         void socketDisconnected();
-        void jsonMessageReceived(const QString& message) ;
+        void jsonMessageReceived(const QString& message);
 
+        void nicknameListAdd(const QString& text);
+        void nicknameListUpdateSend();
 
 private:
+        QWebSocketServer *WebSocketServer;
+        QList<QWebSocket *> clients;
+        Logger logs;
 
-        QWebSocketServer *WebSocketServer ;
-        QList<QWebSocket *> clients ;
-        Logger logs ;
-
+        std::vector<std::string> nicknameList;
 };
 
