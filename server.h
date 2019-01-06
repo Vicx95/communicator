@@ -29,10 +29,14 @@ private Q_SLOTS:
         void socketDisconnected();
         void jsonMessageReceived(const QString& message);
 
+        void nicknameListAdd(const QString& text);
+        void nicknameListUpdateSend();
+
 private:
         QWebSocketServer *WebSocketServer;
         QList<QWebSocket *> clients;
         Logger logs;
 
+        std::vector<std::string> nicknameList;
 };
 

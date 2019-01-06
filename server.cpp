@@ -36,13 +36,16 @@ void Server::onNewConnection()
     QWebSocket *socket = WebSocketServer->nextPendingConnection();
     QTextStream(stdout) << getIdentifier(socket) << " polaczony!\n";
     socket->setParent(this);
-    connect(socket, &QWebSocket::textMessageReceived,this,&Server::jsonMessageReceived);
+    connect(socket, &QWebSocket::textMessageReceived,this, &Server::jsonMessageReceived);
     connect(socket, &QWebSocket::textMessageReceived, this, &Server::processTxtMsg);
+
+    connect(socket, &QWebSocket::textMessageReceived, this, &Server::nicknameListAdd);
+
     connect(socket, &QWebSocket::disconnected, this, &Server::socketDisconnected);
+
     clients << socket;
 
     logs.saveConnectionLog(socket);
-
 }
 
 void  Server::processTxtMsg(QString msg)
@@ -50,8 +53,9 @@ void  Server::processTxtMsg(QString msg)
     QWebSocket *ptr_sender = qobject_cast<QWebSocket * >(sender());
     for(QWebSocket *ptr_client : qAsConst(clients))
     {
-        if(ptr_client != ptr_sender)
+        if(ptr_client != ptr_sender) {
             ptr_client->sendTextMessage(msg);
+        }
     }
 }
 
@@ -61,6 +65,17 @@ void Server::socketDisconnected()
 
     QTextStream(stdout) << getIdentifier(client) << "rozlaczony!\n";
 
+    int pos;
+    for (pos = 0; pos < clients.size(); ++pos) {
+        if (clients.at(pos) == client) {
+            break;
+        }
+    }
+
+    nicknameList.erase(nicknameList.begin() + pos);
+
+    nicknameListUpdateSend();
+
     if(client)
     {
         clients.removeAll(client);
@@ -68,7 +83,6 @@ void Server::socketDisconnected()
         client->deleteLater();
     }
     logs.saveDisconnectLog(client);
-
 }
 
 void Server::jsonMessageReceived(const QString &message)
@@ -85,9 +99,60 @@ void Server::jsonMessageReceived(const QString &message)
         qWarning()<< "Received JSON message that is not an object: " << message;
     }
 
-
     qDebug() << msg;
     emit messageReceived(msg.object(),this);
 }
 
+void Server::nicknameListAdd(const QString& text)
+{
+    QWebSocket *client = qobject_cast<QWebSocket *> (sender());
 
+    QJsonDocument msg = QJsonDocument::fromJson(text.toUtf8());
+
+    QJsonObject object(msg.object());
+
+    if (object.contains("event") && object["event"] == "response" &&
+        object.contains("type") && object["type"] == "nickname" &&
+        object.contains("data")) {
+
+        object = object["data"].toObject();
+
+        QString nickname = object.value("nickname").toString();
+
+        int pos;
+        for (pos = 0; pos < clients.size(); ++pos) {
+            if (clients.at(pos) == client) {
+                break;
+            }
+        }
+
+        qDebug() << nickname; qDebug() << pos;
+
+        nicknameList.push_back(nickname.toStdString());
+
+        nicknameListUpdateSend();
+    }
+}
+
+void Server::nicknameListUpdateSend()
+{
+    QJsonArray array;
+
+    for (const std::string& nickname : nicknameList) {
+        array.push_back(QString::fromStdString(nickname));
+    }
+
+    QJsonObject object;
+    object.insert("event", QJsonValue::fromVariant("users"));
+    object.insert("users", array);
+
+    qDebug() << object;
+
+    QJsonDocument doc(object);
+    qDebug() << doc.toJson(QJsonDocument::Compact);
+
+    for(QWebSocket *ptr_client : qAsConst(clients))
+    {
+        ptr_client->sendTextMessage(doc.toJson(QJsonDocument::Compact));
+    }
+}
