@@ -1,7 +1,8 @@
 #pragma once
 
 #include "logger.h"
-
+#include <QString>
+#include <QVector>
 #include <QtCore/QObject>
 #include <QtCore/QList>
 #include <QtCore/QByteArray>
@@ -26,9 +27,9 @@ public:
 private Q_SLOTS:
         void onNewConnection();
         void processTxtMsg(QString msg);
+        void processPrivTxtMsg(const QString &message) ;
         void socketDisconnected();
         void jsonMessageReceived(const QString& message);
-
         void nicknameListAdd(const QString& text);
         void nicknameListUpdateSend();
 
@@ -36,7 +37,6 @@ private:
         QWebSocketServer *WebSocketServer;
         QList<QWebSocket *> clients;
         Logger logs;
-
-        std::vector<std::string> nicknameList;
+        QVector<QString> nicknameList;
 };
 

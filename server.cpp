@@ -38,7 +38,7 @@ void Server::onNewConnection()
     socket->setParent(this);
     connect(socket, &QWebSocket::textMessageReceived,this, &Server::jsonMessageReceived);
     connect(socket, &QWebSocket::textMessageReceived, this, &Server::processTxtMsg);
-
+    connect(socket,&QWebSocket::textMessageReceived,this,&Server::processPrivTxtMsg);
     connect(socket, &QWebSocket::textMessageReceived, this, &Server::nicknameListAdd);
 
     connect(socket, &QWebSocket::disconnected, this, &Server::socketDisconnected);
@@ -51,6 +51,7 @@ void Server::onNewConnection()
 void  Server::processTxtMsg(QString msg)
 {
     QWebSocket *ptr_sender = qobject_cast<QWebSocket * >(sender());
+
     for(QWebSocket *ptr_client : qAsConst(clients))
     {
         if(ptr_client != ptr_sender) {
@@ -128,7 +129,7 @@ void Server::nicknameListAdd(const QString& text)
 
         qDebug() << nickname; qDebug() << pos;
 
-        nicknameList.push_back(nickname.toStdString());
+        nicknameList.push_back(nickname);
 
         nicknameListUpdateSend();
     }
@@ -138,8 +139,8 @@ void Server::nicknameListUpdateSend()
 {
     QJsonArray array;
 
-    for (const std::string& nickname : nicknameList) {
-        array.push_back(QString::fromStdString(nickname));
+    for (const QString& nickname : nicknameList) {
+        array.push_back(nickname);
     }
 
     QJsonObject object;
@@ -156,3 +157,31 @@ void Server::nicknameListUpdateSend()
         ptr_client->sendTextMessage(doc.toJson(QJsonDocument::Compact));
     }
 }
+
+void Server::processPrivTxtMsg(const QString &message)
+{
+    QWebSocket *client = qobject_cast<QWebSocket *> (sender());
+
+    QJsonDocument msg = QJsonDocument::fromJson(message.toUtf8());
+
+    QJsonObject object(msg.object());
+
+    if(object.contains("event") && object["event"] == "private" &&
+       object.contains("userName") && object.contains("toUserName") &&
+       object.contains("message") )
+    {
+        QString private_message = object.value("message").toString() ;
+        QString toUser = object.value("toUserName").toString() ;
+        for(unsigned int i = 0 ; i < nicknameList.size(); i++)
+        {
+            if(nicknameList[i].compare(toUser) == 0)
+            {
+                client = clients[i] ;
+                client ->sendTextMessage(private_message) ;
+                break ;
+            }
+
+        }
+    }
+}
+
