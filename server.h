@@ -26,7 +26,7 @@ public:
 
 private Q_SLOTS:
         void onNewConnection();
-        void processTxtMsg(QString msg);
+        void processTxtMsg(const QString& message);
         void processPrivTxtMsg(const QString &message) ;
         void socketDisconnected();
         void jsonMessageReceived(const QString& message);
